@@ -1,0 +1,29 @@
+{
+  "name": "deicheck-desktop",
+  "productName": "DEICHECK",
+  "version": "1.0.0",
+  "description": "DEICHECK para computador: o painel do evento numa janela própria, no Mac e no Windows.",
+  "private": true,
+  "main": "main.cjs",
+  "author": "DEICHECK",
+  "homepage": "https://www.deicheck.com.br",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "desktop": "electron .",
+    "smoke": "electron . --smoke",
+    "test": "node --test test/*.test.mjs",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:win": "electron-builder --win --publish never",
+    "dist:linux": "electron-builder --linux dir --publish never"
+  },
+  "devDependencies": {
+    "electron": "44.5.1",
+    "electron-builder": "26.15.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/victorbarrosoc-hub/deicheck-desktop.git"
+  }
+}

@@ -1,0 +1,50 @@
+# Empacotamento do DEICHECK para computador (npm run dist:mac / dist:win, ou o workflow do GitHub).
+appId: br.com.deicheck.desktop
+productName: DEICHECK
+copyright: Copyright © 2026 DEICHECK
+directories:
+  output: dist
+  buildResources: build
+asar: true
+files:
+  - package.json
+  - main.cjs
+  - regras.cjs
+  - offline.html
+  - build/icon.png
+# O executável não vira um Node com as permissões do app, e só o app.asar conferido é carregado.
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+mac:
+  target:
+    - target: dmg
+      arch: [universal]
+  category: public.app-category.productivity
+  icon: build/icon.png
+  darkModeSupport: true
+  minimumSystemVersion: '11.0'
+  # Sem certificado da Apple por enquanto: assinatura ad-hoc (na primeira vez o macOS pede para confirmar a abertura).
+  identity: '-'
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  notarize: false
+  artifactName: DEICHECK-mac.${ext}
+dmg:
+  title: DEICHECK
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.png
+  artifactName: DEICHECK-windows.${ext}
+nsis:
+  oneClick: true
+  perMachine: false
+  shortcutName: DEICHECK
+linux:
+  target: dir
+  icon: build/icon.png

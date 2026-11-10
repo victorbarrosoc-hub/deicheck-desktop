@@ -1,0 +1,84 @@
+# DEICHECK para computador: gera o .dmg num Mac e o .exe num Windows do GitHub e publica no Release da versão.
+# O site entrega os dois pela página deicheck.com.br/baixar (que lê o Release mais novo deste repositório).
+# Roda em tags v* e pelo botão "Run workflow". Em push comum, só os testes em Ubuntu (minuto de Mac custa 10 vezes o de Linux).
+name: DEICHECK · programa de computador
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+# Só leitura por padrão; escrita só no job que publica no Release.
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    name: Testes (Ubuntu)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm test
+      # Teste de fumaça (Xvfb): abre a janela com a tela "Sem conexão" local e escreve "SMOKE OK".
+      - name: Teste de fumaça
+        run: |
+          export DEICHECK_SMOKE_SAIDA="$RUNNER_TEMP/smoke.txt"
+          xvfb-run -a npx electron . --smoke --no-sandbox
+          grep -q '^SMOKE OK$' "$DEICHECK_SMOKE_SAIDA"
+
+  app:
+    name: App (${{ matrix.label }})
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v')
+    needs: testes
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            label: Mac
+            build: npm run dist:mac
+            arquivo: dist/DEICHECK-mac.dmg
+          - os: windows-latest
+            label: Windows
+            build: npm run dist:win
+            arquivo: dist/DEICHECK-windows.exe
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Empacotar
+        run: ${{ matrix.build }}
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - name: Publicar no Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARQUIVO: ${{ matrix.arquivo }}
+        run: |
+          TAG="v$(node -p "require('./package.json').version")"
+          test -f "$ARQUIVO"
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --title "DEICHECK para computador $TAG" --notes "Baixe em https://www.deicheck.com.br/baixar" --target "$GITHUB_SHA" || true
+          gh release upload "$TAG" "$ARQUIVO" --repo "$GITHUB_REPOSITORY" --clobber
